@@ -40,13 +40,15 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
 	{
 
 		$this->load->model('extension/oc_cardinity_payment/payment/cardinity_payment');
-        //$this->model_extension_oc_cardinity_payment_payment_cardinity_payment->function();
-
-		$sessionDataOnDB = $this->model_extension_oc_cardinity_payment_payment_cardinity_payment->fetchSession($sessionId);
-		//unserialize
-		$this->session->data = json_decode(($sessionDataOnDB['session_data']), true);
-
-		return $this->session->data['order_id']; //$sessionDataOnDB['order_id'];
+        
+        //if session lost, restore from database
+        if($this->session->getId() != $sessionId){
+            $sessionDataOnDB = $this->model_extension_oc_cardinity_payment_payment_cardinity_payment->fetchSession($sessionId);
+    		//unserialize
+            $this->session->data = json_decode(($sessionDataOnDB['session_data']), true);
+        }
+		
+		return $this->session->data['order_id']; 
 
 	}
 
@@ -78,7 +80,7 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
         $description = $this->session->getId();  //$this->session->data['order_id'];
         $order_id = $formattedOrderId;
         $return_url = $this->url->link('extension/oc_cardinity_payment/payment/cardinity_payment.callback', '', true);
-        $cancel_url = $this->url->link('extension/oc_cardinity_payment/payment/cardinity_payment.cancel', '', true);
+        $cancel_url = $this->url->link('extension/oc_cardinity_payment/payment/cardinity_payment.cancel&session='.$this->session->getId(), '', true);
 
         $project_id = $this->config->get('payment_cardinity_payment_project_key_0'); 
         $project_secret = $this->config->get('payment_cardinity_payment_project_secret_0'); 
@@ -192,8 +194,10 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
 
     public function cancel(): string 
     {
-        $red= $this->url->link('checkout/cart', 'language=' . $this->config->get('config_language'), true);
-        return $this->response->redirect($red);
+        $this->getSession($_GET['session']);
+        $this->log->write("Cancel returned, session restored to ".$_GET['session']);
+        $redirect = $this->url->link('checkout/cart', 'language=' . $this->config->get('config_language'), true);
+        return $this->response->redirect($redirect);
     }
 
     public function confirm(): void
