@@ -3,6 +3,54 @@ namespace Opencart\Catalog\Controller\Extension\OcCardinityPayment\Payment;
 
 class CardinityPayment extends \Opencart\System\Engine\Controller
 {
+    /**
+     * Set session to database to preserve between redirects
+     *
+     * @return void
+     */
+    private function setSession()
+	{
+        $this->load->model('extension/oc_cardinity_payment/payment/cardinity_payment');
+        
+		$rawSessionData = $this->session->data; 
+
+        //serialize
+		$serializedSession = json_encode($rawSessionData);
+
+        $this->log->write("Session Write::".$serializedSession);
+
+		try {
+			$this->model_extension_oc_cardinity_payment_payment_cardinity_payment->storeSession(array(
+				'session_id' => $this->session->getId(),
+				'session_data' => $serializedSession,
+			));
+		} catch (Exception $e) {
+			$this->log->write("db error" . $e->getMessage());
+		}
+
+	}
+
+    /**
+     * Restore session from database
+     *
+     * @param [type] $sessionId
+     * @return string
+     */
+	private function getSession($sessionId): string
+	{
+
+		$this->load->model('extension/oc_cardinity_payment/payment/cardinity_payment');
+        
+        //if session lost, restore from database
+        if($this->session->getId() != $sessionId){
+            $sessionDataOnDB = $this->model_extension_oc_cardinity_payment_payment_cardinity_payment->fetchSession($sessionId);
+    		//unserialize
+            $this->session->data = json_decode(($sessionDataOnDB['session_data']), true);
+        }
+		
+		return $this->session->data['order_id']; 
+
+	}
 
     /**
      * Build Hosted payment request form
@@ -21,25 +69,18 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
 		if ($this->customer->isLogged() || !$this->config->get('config_customer_price')) {
 			($this->model_checkout_cart->getTotals)($totals, $taxes, $total);
 		}
-
-        $this->log->write($this->config->get("config_currency"));
         
         $amount = number_format($total, 2, '.', '');
         $country = strtoupper(substr($this->config->get('config_language'), 3, 2)); 
         $language = strtoupper(substr($this->config->get('config_language'), 0, 2));
         $currency = $this->session->data['currency'];
 
-        $formattedOrderId = $this->session->data['order_id'];
-        if ($formattedOrderId < 100) {
-            $formattedOrderId = str_pad($formattedOrderId, 3, '0', STR_PAD_LEFT);
-        } else {
-            $formattedOrderId = $orderId;
-        }
+        $formattedOrderId = str_pad($this->session->data['order_id'], 3, '0', STR_PAD_LEFT);
 
-        $description = $this->session->data['order_id'];
+        $description = $this->session->getId();  //$this->session->data['order_id'];
         $order_id = $formattedOrderId;
-        $return_url = $this->url->link('extension/oc_cardinity_payment/payment/cardinity_payment&event=hosted_callback', '', true);
-        $cancel_url = $this->url->link('extension/oc_cardinity_payment/payment/cardinity_payment&event=hosted_callback', '', true);
+        $return_url = $this->url->link('extension/oc_cardinity_payment/payment/cardinity_payment.callback', '', true);
+        $cancel_url = $this->url->link('extension/oc_cardinity_payment/payment/cardinity_payment.cancel&session='.$this->session->getId(), '', true);
 
         $project_id = $this->config->get('payment_cardinity_payment_project_key_0'); 
         $project_secret = $this->config->get('payment_cardinity_payment_project_secret_0'); 
@@ -69,6 +110,8 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
         $data['logged'] = $this->customer->isLogged();
         $data['action_url'] = 'https://checkout.cardinity.com';
 
+        $this->setSession();
+
         return $this->load->view('extension/oc_cardinity_payment/payment/cardinity_hosted_payment', $data);
     }
 
@@ -84,14 +127,18 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
         $this->load->model('extension/oc_cardinity_payment/payment/cardinity_payment');
         $this->load->model('checkout/order');
 
+        $this->getSession($_POST['description']);
+
         $json['redirect'] = $this->url->link('checkout/failure', 'language=' . $this->config->get('config_language'), true);
 
         
         if (!isset($this->session->data['order_id'])) {
             //order not found            
+            $this->log->write("Order was not found in session");
             $json['error']['warning'] = $this->language->get('error_order');
         } else {
-            //order found            
+            //order found    
+            
             // Verify response is not tampered
             $message = '';
             ksort($_POST);
@@ -103,9 +150,13 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
                 $message .= $key . $value;
             }
 
-            $signature = hash_hmac('sha256', $message, '1pl6zupeeby1plu9ru5w6pbgow2zzyurrc1s3s2x7dwtupch8f');
+            $signature = hash_hmac('sha256', $message, $this->config->get('payment_cardinity_payment_project_secret_0'));
 
-            if ($signature == $_POST['signature']) {
+            $formattedOrderId = str_pad($this->session->data['order_id'], 3, '0', STR_PAD_LEFT);
+
+            if($formattedOrderId != $_POST['order_id']){
+                $json['error']['warning'] = $this->language->get('error_order');
+            } else if ($signature == $_POST['signature']) {
                 //signature matched
                 if ($_POST['status']??'' == 'approved') {
                     //payment accepted
@@ -113,14 +164,17 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
                     $json['redirect'] = $this->url->link('checkout/success', 'language=' . $this->config->get('config_language'), true);
 
                 } else {
+                    
                     //payment failed
+                    $this->log->write("paymebnt fail other reasonh");
                     $this->model_checkout_order->addHistory($this->session->data['order_id'], $this->config->get('payment_cardinity_payment_failed_status_id'), '', true);                    
                 }
 
             } else {
                 //bad signature
+                $this->log->write("signaure mismatch");
                 $json['error']['warning'] = $this->language->get('error_hosted_signature');
-                $this->model->extension_oc_cardinity_payment_payment_cardinity_payment->log("Error hosted signature did not match");
+                $this->model->model_extension_oc_cardinity_payment_payment_cardinity_payment->log("Error hosted signature did not match");
             }
 
         }
@@ -130,35 +184,20 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
 
     public function index(): string
     {
-        /**
-         * Bypass router, as we cannot pass '|' in hosted payment callback url.
-         */
-        if ( isset($_GET['event']) ?? '' === 'hosted_callback') {
-            return $this->handleHostedPaymentResponse();
-        }
-
         return $this->buildHostedPaymentForm();
-
-        /*
-    $this->load->language('extension/oc_cardinity_payment/payment/cardinity_payment');
-
-    $data['logged'] = $this->customer->isLogged();
-
-    $data['months'] = [];
-
-    foreach (range(1, 12) as $month) {
-    $data['months'][] = date('m', mktime(0, 0, 0, $month));
     }
 
-    $data['years'] = [];
-
-    foreach (range(date('Y'), date('Y', strtotime('+10 year'))) as $year) {
-    $data['years'][] = $year;
+    public function callback(): string 
+    {
+        return $this->handleHostedPaymentResponse();
     }
 
-    $data['language'] = $this->config->get('config_language');
-
-    return $this->load->view('extension/oc_cardinity_payment/payment/cardinity_payment', $data);*/
+    public function cancel(): string 
+    {
+        $this->getSession($_GET['session']);
+        $this->log->write("Cancel returned, session restored to ".$_GET['session']);
+        $redirect = $this->url->link('checkout/cart', 'language=' . $this->config->get('config_language'), true);
+        return $this->response->redirect($redirect);
     }
 
     public function confirm(): void

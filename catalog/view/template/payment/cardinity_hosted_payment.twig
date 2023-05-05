@@ -14,16 +14,8 @@
 		<input type="hidden" name="project_id" value="{{project_id}}"/>
 		<input type="hidden" name="return_url" value="{{return_url}}"/>
 		<input type="hidden" name="cancel_url" value="{{cancel_url}}"/>
-		<input type="text" name="signature" value="{{signature}}"/>
+		<input type="hidden" name="signature" value="{{signature}}"/>
 		
-		{% if logged %}
-			<div class="form-check">
-				<input type="checkbox" name="store" value="1" id="input-store" class="form-check-input"/>
-				<label for="input-store" class="form-check-label">
-					<strong>{{ text_store }}</strong>
-				</label>
-			</div>
-		{% endif %}
 		<div class="d-inline-block pt-2 pd-2 w-100 text-end">
 			<button type="submit" id="button-confirm" class="btn btn-primary">{{ button_confirm }}</button>
 		</div>
