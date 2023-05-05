@@ -54,5 +54,7 @@ Cardinity is a licensed payment institution, active in the European Union, regis
 #### Keywords
 payment gateway, credit card payment, online payment, credit card processing, online payment gateway, cardinity for Opencart.     
 
+## How to create OcMod installer from this repository code?
+Zip everything inside repo to "oc_cardinity_payment.ocmod.zip" thats it.
   
  [▲ back to top](#Cardinity-Payment-Gateway-for-Opencart)
