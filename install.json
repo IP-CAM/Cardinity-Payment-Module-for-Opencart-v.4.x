@@ -1,6 +1,6 @@
 {
-  "name": "OpenCart Cardinity Payment",
+  "name": "Cardinity Payment Gateway",
   "version": "1.0.0",
-  "author": "OpenCart Ltd",
-  "link": "https://www.opencart.com"
+  "author": "Cardinity Ltd",
+  "link": "https://cardinity.com/"
 }
