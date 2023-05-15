@@ -40,29 +40,6 @@ class CardinityPayment extends \Opencart\System\Engine\Model {
 		return $method_data;
 	}
 
-	public function addOrder($data) {
-
-		$orderByThisId= $this->getOrder($data['order_id']);
-		if ($orderByThisId && $orderByThisId['payment_status'] != 'failed_3dsv1') {
-			//avoid creating duplicate order by same id	
-		}else{
-			$this->db->query("INSERT INTO `" . DB_PREFIX . "cardinity_order` SET `order_id` = '" . (int)$data['order_id'] . "', `payment_id` = '" . $this->db->escape($data['payment_id']) . "'");
-		}
-		
-	}
-
-	public function getOrder($order_id) {
-		$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "cardinity_order` WHERE `order_id` = '" . (int)$order_id . "' ORDER BY cardinity_order_id DESC LIMIT 1");
-
-		return $query->row;
-	}
-
-
-	public function updateOrder($data) {
-		$this->db->query("UPDATE `" . DB_PREFIX . "cardinity_order` SET `payment_status` = '" . $this->db->escape($data['payment_status']) . "' WHERE `payment_id` = '" . $this->db->escape($data['payment_id']) . "'");
-	}
-
-
 	public function storeSession($data) {
 
 		$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "cardinity_session` WHERE `session_id` = '" . $data['session_id'] . "' ORDER BY `cardinity_session_id` ASC  LIMIT 1");
