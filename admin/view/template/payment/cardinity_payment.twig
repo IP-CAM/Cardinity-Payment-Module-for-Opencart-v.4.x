@@ -36,7 +36,7 @@
 			<div class="card-header">
 				<i class="fa-solid fa-pencil"></i>
 				{{ text_edit }}
-        <span style='float: right'>v1.0.0 for oc4.0.2.x</span>
+        <span style='float: right'>{{ extension_version ?? "" }}</span>
       </div>
 			<div class="card-body">
 				<form id="form-payment" action="{{ save }}" method="post" data-oc-toggle="ajax">
@@ -45,14 +45,14 @@
 						<label for="input-project-key" class="col-sm-2 col-form-label">{{ entry_project_key }}</label>
 						<div class="col-sm-10">
 							<input type="text" name="payment_cardinity_payment_project_key_0" value="{{ payment_cardinity_payment_project_key_0 }}" placeholder="{{ entry_project_key }}" id="input-project-key" class="form-control"/>
-              <small class="form-text text-muted">required</small>
+							<small class="form-text text-muted">required</small>
 						</div>
 					</div>
 					<div class="row mb-3">
 						<label for="input-project-secret" class="col-sm-2 col-form-label">{{ entry_project_secret }}</label>
 						<div class="col-sm-10">
 							<input type="text" required name="payment_cardinity_payment_project_secret_0" value="{{ payment_cardinity_payment_project_secret_0 }}" placeholder="{{ entry_project_secret }}" id="input-project-secret" class="form-control"/>
-              <small class="form-text text-muted">required</small>
+							<small class="form-text text-muted">required</small>
 						</div>
 					</div>
 
@@ -66,7 +66,7 @@
 							</select>
 						</div>
 					</div>
-					
+
 
 					<div class="row mb-3">
 						<label for="input-failed-status" class="col-sm-2 col-form-label">{{ entry_declined_status }}</label>
@@ -78,7 +78,7 @@
 							</select>
 						</div>
 					</div>
-				
+
 
 					<div class="row mb-3">
 						<label for="input-geo-zone" class="col-sm-2 col-form-label">{{ entry_geo_zone }}</label>
@@ -109,7 +109,7 @@
 						</div>
 					</div>
 
-          <div class="row mb-3">
+					<div class="row mb-3">
 						<label for="input-debug" class="col-sm-2 col-form-label">{{ entry_debug }}</label>
 						<div class="col-sm-10">
 							<div class="form-check form-switch form-switch-lg">

@@ -49,7 +49,13 @@ class CardinityPayment extends \Opencart\System\Engine\Controller {
 		$data['header'] = $this->load->controller('common/header');
 		$data['column_left'] = $this->load->controller('common/column_left');
 		$data['footer'] = $this->load->controller('common/footer');
-	
+
+		if(is_readable('../extension/oc_cardinity_payment/install.json')){
+			$module_json = file_get_contents('../extension/oc_cardinity_payment/install.json');
+			$module_json = json_decode($module_json, true);
+			$data['extension_version'] = "v". $module_json['version'] . " for oc4.0.2+";
+		}
+		
 		$this->response->setOutput($this->load->view('extension/oc_cardinity_payment/payment/cardinity_payment', $data));
 	}
 
