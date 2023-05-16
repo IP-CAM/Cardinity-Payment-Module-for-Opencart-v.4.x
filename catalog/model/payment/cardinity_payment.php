@@ -42,18 +42,18 @@ class CardinityPayment extends \Opencart\System\Engine\Model {
 
 	public function storeSession($data) {
 
-		$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "cardinity_session` WHERE `session_id` = '" . $data['session_id'] . "' ORDER BY `cardinity_session_id` ASC  LIMIT 1");
+		$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "cardinity_session` WHERE `session_id` = '" . $this->db->escape($data['session_id']) . "' ORDER BY `cardinity_session_id` ASC  LIMIT 1");
 
 		if($query->num_rows){
-			$this->db->query("UPDATE  `" . DB_PREFIX . "cardinity_session` SET `session_data` = '" .  $this->db->escape($data['session_data'])  . "' WHERE `session_id` = '" . $data['session_id'] . "'");
+			$this->db->query("UPDATE  `" . DB_PREFIX . "cardinity_session` SET `session_data` = '" .  $this->db->escape($data['session_data'])  . "' WHERE `session_id` = '" . $this->db->escape($data['session_id']) . "'");
 		}else{
-			$this->db->query("INSERT INTO `" . DB_PREFIX . "cardinity_session` SET `session_id` = '" . $data['session_id'] . "', `session_data` = '" . $this->db->escape($data['session_data']) . "'");
+			$this->db->query("INSERT INTO `" . DB_PREFIX . "cardinity_session` SET `session_id` = '" . $this->db->escape($data['session_id']) . "', `session_data` = '" . $this->db->escape($data['session_data']) . "'");
 		}
 
 	}
 
 	public function fetchSession($sessionId) {
-		$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "cardinity_session` WHERE `session_id` = '" . $sessionId . "' ORDER BY `cardinity_session_id` ASC  LIMIT 1");
+		$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "cardinity_session` WHERE `session_id` = '" . $this->db->escape($sessionId) . "' ORDER BY `cardinity_session_id` ASC  LIMIT 1");
 
 		return $query->row;
 	}
