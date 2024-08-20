@@ -17,9 +17,7 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
         //serialize
 		$serializedSession = json_encode($rawSessionData);
 
-        $this->log->write("Session Write::".$serializedSession);
-
-		try {
+        try {
 			$this->model_extension_oc_cardinity_payment_payment_cardinity_payment->storeSession(array(
 				'session_id' => $this->session->getId(),
 				'session_data' => $serializedSession,
@@ -79,11 +77,15 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
 
         $description = $this->session->getId();  //$this->session->data['order_id'];
         $order_id = $formattedOrderId;
-        $return_url = $this->url->link('extension/oc_cardinity_payment/payment/cardinity_payment.callback', '', true);
+        $return_url = $this->url->link('extension/oc_cardinity_payment/payment/cardinity_payment.callback&session='.$this->session->getId(), '', true);
+        $notification_url = $this->url->link('extension/oc_cardinity_payment/payment/cardinity_payment.notify&session='.$this->session->getId(), '', true);
         $cancel_url = $this->url->link('extension/oc_cardinity_payment/payment/cardinity_payment.cancel&session='.$this->session->getId(), '', true);
 
         $project_id = $this->config->get('payment_cardinity_payment_project_key_0'); 
-        $project_secret = $this->config->get('payment_cardinity_payment_project_secret_0'); 
+        $project_secret = $this->config->get('payment_cardinity_payment_project_secret_0');
+
+        $email_address =$this->session->data['customer']['email'];
+        $telephone_number = $this->session->data['customer']['telephone'];
 
         $attributes = [
             "amount" => $amount,
@@ -95,7 +97,15 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
             "project_id" => $project_id,
             "cancel_url" => $cancel_url,
             "return_url" => $return_url,
+            "notification_url" => $notification_url,
         ];
+
+        if($telephone_number){
+            $attributes['mobile_phone_number'] = $telephone_number;
+        }
+        if($email_address){
+            $attributes['email_address'] = $email_address;
+        }
 
         ksort($attributes);
         $message = '';
@@ -120,9 +130,8 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
      *
      * @return view
      */
-    private function handleHostedPaymentResponse()
+    private function handleHostedPaymentResponse($notifyOnly = false)
     {
-
         $this->load->language('extension/oc_cardinity_payment/payment/cardinity_payment');
         $this->load->model('extension/oc_cardinity_payment/payment/cardinity_payment');
         $this->load->model('checkout/order');
@@ -131,14 +140,23 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
 
         $json['redirect'] = $this->url->link('checkout/failure', 'language=' . $this->config->get('config_language'), true);
 
-        
+
+        if(isset($this->session->data['order_id'])){
+            $order_id = $this->session->data['order_id'];
+        } else {
+            $order_id = $_GET['session'];
+            $this->getSession($_GET['session']);
+        }
+
+        $orderInfo = $this->model_checkout_order->getOrder($order_id);
+
         if (!isset($this->session->data['order_id'])) {
             //order not found            
             $this->log->write("Order was not found in session");
             $json['error']['warning'] = $this->language->get('error_order');
         } else {
-            //order found    
-            
+            //order found
+
             // Verify response is not tampered
             $message = '';
             ksort($_POST);
@@ -160,25 +178,32 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
                 //signature matched
                 if ($_POST['status']??'' == 'approved') {
                     //payment accepted
-                    $this->model_checkout_order->addHistory($this->session->data['order_id'], $this->config->get('payment_cardinity_payment_approved_status_id'), '', true);
-                    $json['redirect'] = $this->url->link('checkout/success', 'language=' . $this->config->get('config_language'), true);
+                    if ($orderInfo['order_status_id'] != $this->config->get('payment_cardinity_payment_approved_status_id')){
+                        $this->model_checkout_order->addHistory($this->session->data['order_id'], $this->config->get('payment_cardinity_payment_approved_status_id'), '', true);
+                    }
 
+                    $json['redirect'] = $this->url->link('checkout/success', 'language=' . $this->config->get('config_language'), true);
                 } else {
-                    
                     //payment failed
-                    $this->log->write("paymebnt fail other reasonh");
-                    $this->model_checkout_order->addHistory($this->session->data['order_id'], $this->config->get('payment_cardinity_payment_failed_status_id'), '', true);                    
+                    $this->model_checkout_order->addHistory($this->session->data['order_id'], $this->config->get('payment_cardinity_payment_failed_status_id'), '', true);
                 }
 
             } else {
                 //bad signature
-                $this->log->write("signaure mismatch");
                 $json['error']['warning'] = $this->language->get('error_hosted_signature');
                 $this->model->model_extension_oc_cardinity_payment_payment_cardinity_payment->log("Error hosted signature did not match");
             }
 
         }
 
+        if(isset($json['error'])){
+            $this->log->write(print_r($json['error'], true));
+        }
+
+        if($notifyOnly){
+            echo "Notification recieved by oc4 ". $this->config->get('config_name');
+            die;
+        }
         return $this->response->redirect($json['redirect']);
     }
 
@@ -192,10 +217,14 @@ class CardinityPayment extends \Opencart\System\Engine\Controller
         return $this->handleHostedPaymentResponse();
     }
 
+    public function notify(): string
+    {
+        return $this->handleHostedPaymentResponse(true);
+    }
+
     public function cancel(): string 
     {
         $this->getSession($_GET['session']);
-        $this->log->write("Cancel returned, session restored to ".$_GET['session']);
         $redirect = $this->url->link('checkout/cart', 'language=' . $this->config->get('config_language'), true);
         return $this->response->redirect($redirect);
     }
