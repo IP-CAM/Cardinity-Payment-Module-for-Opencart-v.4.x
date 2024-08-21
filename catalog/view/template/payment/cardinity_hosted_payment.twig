@@ -14,7 +14,16 @@
 		<input type="hidden" name="project_id" value="{{project_id}}"/>
 		<input type="hidden" name="return_url" value="{{return_url}}"/>
 		<input type="hidden" name="cancel_url" value="{{cancel_url}}"/>
+		<input type="hidden" name="notification_url" value="{{notification_url}}"/>
 		<input type="hidden" name="signature" value="{{signature}}"/>
+
+		{% if email_address|length %}
+		<input type="hidden" name="email_address" value="{{email_address}}"/>
+		{% endif %}
+
+		{% if mobile_phone_number|length %}
+		<input type="hidden" name="mobile_phone_number" value="{{mobile_phone_number}}"/>
+		{% endif %}
 		
 		<div class="d-inline-block pt-2 pd-2 w-100 text-end">
 			<button type="submit" id="button-confirm" class="btn btn-primary">{{ button_confirm }}</button>
