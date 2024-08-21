@@ -29,7 +29,7 @@ class CardinityPayment extends \Opencart\System\Engine\Model {
 			CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "cardinity_session` (
 			`cardinity_session_id` INT(11) NOT NULL AUTO_INCREMENT,
 			`session_id` VARCHAR(255) NOT NULL,
-			`session_data` TEXT,
+			`session_data` LONGTEXT,
 			PRIMARY KEY (`cardinity_session_id`)
 			) ENGINE=MyISAM DEFAULT COLLATE=utf8_general_ci;
 		");		
